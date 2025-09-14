@@ -14,6 +14,7 @@ interface AppContextType {
   deleteTransactionsByIds: (ids: string[]) => Promise<void>;
   googleSheetsConnected: boolean;
   syncStatus: 'idle' | 'syncing' | 'success' | 'error';
+  manualSync: () => Promise<void>;
 }
 
 // Create the context with a default undefined value
@@ -52,7 +53,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     return user ? JSON.parse(user) : null;
   };
 
-  // Filter transactions by current user
+  // Filter transactions by current user for privacy
   const transactions = allTransactions.filter(tx => {
     const currentUser = getCurrentUser();
     if (!currentUser) return false;
@@ -60,6 +61,38 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     const currentUserName = currentUser.displayName || currentUser.email || 'Unknown User';
     return tx.recordedBy === currentUserName;
   });
+
+  // Recalculate vault based on current user's transactions only
+  const recalculateVault = useCallback((transactions: Transaction[], currentUserName?: string) => {
+    const newVault = initializeVault();
+    
+    // If no user name provided, get current user
+    if (!currentUserName) {
+      const currentUser = getCurrentUser();
+      currentUserName = currentUser?.displayName || currentUser?.email || 'Unknown User';
+    }
+    
+    // Only process transactions for the current user
+    const userTransactions = transactions.filter(tx => tx.recordedBy === currentUserName);
+    
+    userTransactions.forEach(tx => {
+      if (tx.paymentMethod === 'cash' && tx.breakdown && typeof tx.breakdown === 'object') {
+        for (const denomStr in tx.breakdown) {
+          const denom = parseInt(denomStr, 10);
+          const count = tx.breakdown[denom] || 0;
+          if (DENOMINATIONS.includes(denom)) {
+            if (tx.type === 'credit') {
+              newVault[denom] = (newVault[denom] || 0) + count;
+            } else if (tx.type === 'debit') {
+              newVault[denom] = (newVault[denom] || 0) - count;
+            }
+          }
+        }
+      }
+    });
+    
+    return newVault;
+  }, []);
 
   // Load data from localStorage on initial render
   useEffect(() => {
@@ -119,8 +152,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
            const sanitizedVault = initializeVault();
            DENOMINATIONS.forEach(denom => {
               const count = parsedVault[denom];
-              // Ensure count is a valid, non-negative, finite integer
-              if(typeof count === 'number' && isFinite(count) && count >= 0) {
+              // Allow negative counts for vault (debits can make vault negative)
+              if(typeof count === 'number' && isFinite(count)) {
                 sanitizedVault[denom] = Math.floor(count);
               }
            });
@@ -129,29 +162,81 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       }
        setVault(finalVault);
 
-    // Check Google Apps Script connection
+    // Check Google Apps Script connection and load existing data
     const checkGoogleSheetsConnection = async () => {
       try {
+        console.log('🔄 Starting Google Sheets connection check...');
         setSyncStatus('syncing');
         
         // Test connection to Google Apps Script
+        console.log('📡 Testing connection to Google Apps Script...');
         const isConnected = await googleSheets.testConnection();
+        console.log('📡 Connection test result:', isConnected);
         
         if (isConnected) {
+          console.log('✅ Google Apps Script connected successfully');
           // Try to initialize the sheet
+          console.log('🔧 Initializing Google Sheets...');
           await googleSheets.initializeSheet();
           setGoogleSheetsConnected(true);
+          
+          // Load all existing transactions from Google Sheets
+          console.log('📥 Loading existing transactions from Google Sheets...');
+          const sheetTransactions = await googleSheets.getAllTransactions();
+          console.log('📥 Loaded', sheetTransactions.length, 'transactions from Google Sheets');
+          
+          if (sheetTransactions.length > 0) {
+            console.log('🔄 Merging sheet transactions with local transactions...');
+            // Merge with local transactions, giving priority to sheet data
+            const mergedTransactions = [...sheetTransactions];
+            // Add any local transactions that don't exist in sheets
+            finalTransactions.forEach(localTx => {
+              if (!sheetTransactions.find(sheetTx => sheetTx.id === localTx.id)) {
+                console.log('➕ Adding local transaction not found in sheets:', localTx.id);
+                mergedTransactions.push(localTx);
+              }
+            });
+            console.log('📊 Final merged transaction count:', mergedTransactions.length);
+            setAllTransactions(mergedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+            
+            // Recalculate vault based on all transactions
+            console.log('🧮 Recalculating vault from all transactions...');
+            const recalculatedVault = recalculateVault(mergedTransactions);
+            setVault(recalculatedVault);
+            console.log('🧮 Vault recalculated:', recalculatedVault);
+          } else {
+            console.log('ℹ️ No transactions found in Google Sheets, keeping local transactions');
+            // If sheets has no data, check if we should upload local transactions
+            if (finalTransactions.length > 0) {
+              console.log('📤 Uploading', finalTransactions.length, 'local transactions to Google Sheets...');
+              for (const tx of finalTransactions) {
+                try {
+                  await googleSheets.addTransaction(tx);
+                  console.log('✅ Uploaded transaction:', tx.id);
+                } catch (error) {
+                  console.warn('⚠️ Failed to upload transaction:', tx.id, error);
+                }
+              }
+              
+              // Recalculate vault for local transactions too
+              console.log('🧮 Recalculating vault from local transactions...');
+              const recalculatedVault = recalculateVault(finalTransactions);
+              setVault(recalculatedVault);
+              console.log('🧮 Vault recalculated:', recalculatedVault);
+            }
+          }
+          
           setSyncStatus('success');
-          console.log('Google Apps Script connected successfully');
+          console.log('✅ Google Sheets initialization completed successfully');
         } else {
           setGoogleSheetsConnected(false);
           setSyncStatus('error');
-          console.warn('Google Apps Script connection failed');
+          console.warn('❌ Google Apps Script connection failed');
         }
       } catch (error) {
         setGoogleSheetsConnected(false);
         setSyncStatus('error');
-        console.error('Google Apps Script connection failed:', error);
+        console.error('💥 Google Apps Script connection failed:', error);
       }
     };
 
@@ -323,6 +408,37 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       console.warn('Failed to delete from Google Sheets:', error);
     }
   }, [transactions]);
+
+  const manualSync = useCallback(async () => {
+    try {
+      setSyncStatus('syncing');
+      console.log('Manual sync started...');
+      
+      // Load all existing transactions from Google Sheets
+      const sheetTransactions = await googleSheets.getAllTransactions();
+      console.log('Manual sync - loaded transactions:', sheetTransactions.length);
+      
+      if (sheetTransactions.length > 0) {
+        console.log('Manual sync - updating local state with', sheetTransactions.length, 'transactions');
+        setAllTransactions(sheetTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        
+        // Recalculate vault from synced transactions
+        console.log('Manual sync - recalculating vault...');
+        const recalculatedVault = recalculateVault(sheetTransactions);
+        setVault(recalculatedVault);
+        console.log('Manual sync - vault recalculated:', recalculatedVault);
+        
+        setSyncStatus('success');
+        console.log('Manual sync completed successfully');
+      } else {
+        console.log('Manual sync - no transactions found in Google Sheets');
+        setSyncStatus('error');
+      }
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+      setSyncStatus('error');
+    }
+  }, [recalculateVault]);
   
 
   const value = {
@@ -335,6 +451,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     deleteTransactionsByIds,
     googleSheetsConnected,
     syncStatus,
+    manualSync,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

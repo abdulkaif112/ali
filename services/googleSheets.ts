@@ -46,10 +46,17 @@ export class GoogleSheetsService {
       console.log('Testing connection to Google Apps Script:', this.webAppUrl);
       const response = await fetch(this.webAppUrl + '?action=test', {
         method: 'GET',
-        mode: 'no-cors'
+        headers: {
+          'Accept': 'text/plain',
+        }
       });
       console.log('Test connection response status:', response.status);
-      return response.ok;
+      if (response.ok) {
+        const responseText = await response.text();
+        console.log('Test connection response:', responseText);
+        return responseText === 'OK';
+      }
+      return false;
     } catch (error) {
       console.error('Failed to connect to Google Apps Script:', error);
       return false;
@@ -62,16 +69,21 @@ export class GoogleSheetsService {
       console.log('Initializing Google Sheets via Apps Script:', this.webAppUrl);
       const response = await fetch(this.webAppUrl, {
         method: 'POST',
-        mode: 'no-cors',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
           action: 'initialize'
         })
       });
       console.log('Initialize response status:', response.status);
-      return response.ok;
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Initialize response:', result);
+        return result.success === true;
+      }
+      return false;
     } catch (error) {
       console.error('Failed to initialize Google Sheets:', error);
       return false;
@@ -92,24 +104,24 @@ export class GoogleSheetsService {
       
       const response = await fetch(this.webAppUrl, {
         method: 'POST',
-        mode: 'no-cors',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify(requestBody)
       });
 
       console.log('Add transaction response status:', response.status);
       
-      if (response.status === 0) {
-        // no-cors mode returns status 0 for successful requests
-        console.log('Transaction likely saved to Google Sheets (no-cors mode):', transaction.id);
-        return true;
-      } else if (response.ok) {
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Add transaction response:', result);
         console.log('Transaction saved to Google Sheets:', transaction.id);
-        return true;
+        return result.success === true;
       } else {
         console.error('Failed to save transaction - response not ok:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
         return false;
       }
     } catch (error) {
@@ -126,9 +138,9 @@ export class GoogleSheetsService {
       
       const response = await fetch(this.webAppUrl, {
         method: 'POST',
-        mode: 'no-cors',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
           action: 'update',
@@ -138,9 +150,11 @@ export class GoogleSheetsService {
 
       console.log('Update transaction response status:', response.status);
       
-      if (response.status === 0 || response.ok) {
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Update transaction response:', result);
         console.log('Transaction updated in Google Sheets:', transaction.id);
-        return true;
+        return result.success === true;
       } else {
         console.error('Failed to update transaction:', response.statusText);
         return false;
@@ -157,9 +171,9 @@ export class GoogleSheetsService {
       console.log('Deleting transaction from Google Sheets:', transactionId);
       const response = await fetch(this.webAppUrl, {
         method: 'POST',
-        mode: 'no-cors',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
           action: 'delete',
@@ -169,9 +183,11 @@ export class GoogleSheetsService {
 
       console.log('Delete transaction response status:', response.status);
       
-      if (response.status === 0 || response.ok) {
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Delete transaction response:', result);
         console.log('Transaction deleted from Google Sheets:', transactionId);
-        return true;
+        return result.success === true;
       } else {
         console.error('Failed to delete transaction:', response.statusText);
         return false;
@@ -197,13 +213,18 @@ export class GoogleSheetsService {
       url.searchParams.append('recordedBy', currentUserName);
       
       console.log('Fetching transactions for user:', currentUserName);
+      console.log('Request URL:', url.toString());
       
       const response = await fetch(url.toString(), {
         method: 'GET',
-        mode: 'no-cors'
+        // Removed no-cors mode to allow reading response
+        headers: {
+          'Accept': 'application/json',
+        }
       });
       
       console.log('Get all transactions response status:', response.status);
+      console.log('Response headers:', response.headers);
       
       if (response.ok) {
         const data = await response.json();
@@ -224,6 +245,10 @@ export class GoogleSheetsService {
             breakdown: row.breakdown ? JSON.parse(row.breakdown) : {},
           }));
         }
+      } else {
+        console.error('Failed to fetch transactions:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
       }
       console.log('No transactions found or error parsing response');
       return [];

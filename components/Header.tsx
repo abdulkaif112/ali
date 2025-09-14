@@ -8,7 +8,7 @@ import { ChartBarIcon } from './icons/ChartBarIcon';
 import { UserIcon } from './icons/UserIcon';
 
 const Header: React.FC = () => {
-  const { googleSheetsConnected, syncStatus } = useAppContext();
+  const { googleSheetsConnected, syncStatus, manualSync } = useAppContext();
   const navigate = useNavigate();
   const commonClasses = "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors";
   const activeClass = "bg-blue-600 text-white";
@@ -21,6 +21,10 @@ const Header: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('ali_enterprises_user');
     navigate('/login');
+  };
+
+  const handleManualSync = () => {
+    manualSync();
   };
 
   const getSyncStatusIcon = () => {
@@ -75,6 +79,14 @@ const Header: React.FC = () => {
               
               {/* User Info and Logout */}
               <div className="flex items-center gap-3 ml-6 pl-6 border-l border-gray-300 dark:border-gray-600">
+                <button
+                  onClick={handleManualSync}
+                  disabled={syncStatus === 'syncing'}
+                  className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/70 disabled:opacity-50 transition-colors"
+                  title="Manually sync with Google Sheets"
+                >
+                  {syncStatus === 'syncing' ? 'Syncing...' : 'Sync'}
+                </button>
                 <span className="text-sm text-gray-600 dark:text-gray-300">
                   {userData?.displayName || userData?.email || 'User'}
                 </span>

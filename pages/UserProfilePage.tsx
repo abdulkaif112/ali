@@ -174,8 +174,8 @@ const UserProfilePage: React.FC = () => {
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-400">Data privacy:</span>
-              <span className="text-green-600 dark:text-green-400 font-semibold">Your data only</span>
+              <span className="text-gray-600 dark:text-gray-400">Data access:</span>
+              <span className="text-green-600 dark:text-green-400 font-semibold">All users data</span>
             </div>
           </div>
         </div>
@@ -188,9 +188,9 @@ const UserProfilePage: React.FC = () => {
             <UserIcon className="h-5 w-5 text-blue-600" />
           </div>
           <div>
-            <h5 className="font-semibold text-blue-900 dark:text-blue-200">Data Privacy</h5>
+            <h5 className="font-semibold text-blue-900 dark:text-blue-200">Data Access</h5>
             <p className="text-sm text-blue-800 dark:text-blue-300">
-              You can only see transactions recorded by your account. All data is filtered by your login credentials to ensure privacy and security.
+              You can see all transactions from all users in the system. New transactions you create will be recorded under your account.
             </p>
           </div>
         </div>
