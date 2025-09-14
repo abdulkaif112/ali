@@ -6,13 +6,13 @@
     }
   ],
   "env": {
-    "GOOGLE_APPS_SCRIPT_URL": "@google_apps_script_url",
-    "VITE_FIREBASE_API_KEY": "@firebase_api_key",
-    "VITE_FIREBASE_AUTH_DOMAIN": "@firebase_auth_domain",
-    "VITE_FIREBASE_PROJECT_ID": "@firebase_project_id",
-    "VITE_FIREBASE_STORAGE_BUCKET": "@firebase_storage_bucket",
-    "VITE_FIREBASE_MESSAGING_SENDER_ID": "@firebase_messaging_sender_id",
-    "VITE_FIREBASE_APP_ID": "@firebase_app_id",
-    "VITE_FIREBASE_MEASUREMENT_ID": "@firebase_measurement_id"
+    "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbwf7p8I32uclFZtgcdpGsRd9qshpHiehPTiDdIMG3U5dieymkCQyKWCkRendyIG5l33/exec",
+    "VITE_FIREBASE_API_KEY": "AIzaSyDcvA8qcEheap8YkhCboRhTrFx0KYTwaCU",
+    "VITE_FIREBASE_AUTH_DOMAIN": "ali-enterprises-82dad.firebaseapp.com",
+    "VITE_FIREBASE_PROJECT_ID": "ali-enterprises-82dad",
+    "VITE_FIREBASE_STORAGE_BUCKET": "ali-enterprises-82dad.firebasestorage.app",
+    "VITE_FIREBASE_MESSAGING_SENDER_ID": "714914859297",
+    "VITE_FIREBASE_APP_ID": "1:714914859297:web:acb723ed92e0dbf819d660",
+    "VITE_FIREBASE_MEASUREMENT_ID": "G-0KTNHK0NDD"
   }
 }
