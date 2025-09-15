@@ -40,9 +40,46 @@ body {
   .print-container {
     box-shadow: none !important;
     border: none !important;
+    padding: 8px !important;
+    font-size: 10px !important;
   }
   /* Hide bottom navigation in print */
   .bottom-nav {
     display: none !important;
+  }
+  
+  /* Responsive table for mobile PDF */
+  table {
+    font-size: 8px !important;
+    width: 100% !important;
+  }
+  
+  th, td {
+    padding: 2px !important;
+    font-size: 8px !important;
+    white-space: nowrap !important;
+  }
+  
+  /* Ensure table fits on mobile screens */
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+  
+  /* Header responsive for print */
+  h1 {
+    font-size: 14px !important;
+    margin-bottom: 4px !important;
+  }
+  
+  /* Adjust spacing for mobile print */
+  .print-container {
+    margin: 0 !important;
+    padding: 4px !important;
+  }
+  
+  /* Make buttons smaller in print view */
+  button, .px-4 {
+    font-size: 8px !important;
+    padding: 2px 4px !important;
   }
 }
