@@ -20,24 +20,26 @@ git add .
 
 REM Configure git user (replace with your details)
 echo Setting up git user...
-git config user.name "salmanajju2"
-git config user.email "your-email@example.com"
+git config user.name "abdulkaif112"
+git config user.email "abdulkaif112@gmail.com"
 
 REM Commit files
 echo Committing files...
-git commit -m "Initial commit: ALI ENTERPRISES transaction management app with Firebase authentication"
+git commit -m "Update: Latest changes and improvements"
 
 REM Set main branch
 echo Setting main branch...
 git branch -M main
 
-REM Add remote origin
-echo Adding remote origin...
-git remote add origin https://github.com/salmanajju2/aa.git
+REM Check and add remote origin
+echo Checking remote origin...
+git remote -v
+echo Adding/updating remote origin...
+git remote set-url origin https://github.com/abdulkaif112/ali.git || git remote add origin https://github.com/abdulkaif112/ali.git
 
 REM Push to GitHub
 echo Pushing to GitHub...
 git push -u origin main
 
-echo Done! Check your repository at: https://github.com/salmanajju2/aa
+echo Done! Check your repository at: https://github.com/abdulkaif112/ali
 pause
