@@ -303,12 +303,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     // Save to Google Sheets (async, non-blocking)
     try {
       setSyncStatus('syncing');
-      await googleSheets.addTransaction(newTransaction);
-      setSyncStatus('success');
-      console.log('Transaction synced to Google Sheets:', newTransaction.id);
+      console.log('🔄 Attempting to sync transaction to Google Sheets:', newTransaction.id);
+      const success = await googleSheets.addTransaction(newTransaction);
+      if (success) {
+        setSyncStatus('success');
+        console.log('✅ Transaction synced to Google Sheets:', newTransaction.id);
+      } else {
+        setSyncStatus('error');
+        console.error('❌ Failed to sync transaction to Google Sheets (returned false):', newTransaction.id);
+      }
     } catch (error) {
       setSyncStatus('error');
-      console.warn('Failed to sync to Google Sheets:', error);
+      console.error('💥 Failed to sync to Google Sheets:', error);
       // Reset to idle after 3 seconds
       setTimeout(() => setSyncStatus('idle'), 3000);
     }
