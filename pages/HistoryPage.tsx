@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Transaction } from '../types';
@@ -11,9 +11,10 @@ import { MinusCircleIcon } from '../components/icons/MinusCircleIcon';
 import { ChevronDownIcon } from '../components/icons/ChevronDownIcon';
 import { ChevronRightIcon } from '../components/icons/ChevronRightIcon';
 import { numberToWords } from '../utils/numberToWords';
+import { ArrowPathIcon } from '../components/icons/ArrowPathIcon';
 
 const HistoryPage: React.FC = () => {
-  const { transactions, deleteTransactionsByIds, companyNames, locations } = useAppContext();
+  const { transactions, deleteTransactionsByIds, companyNames, locations, manualSync, syncStatus } = useAppContext();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompany, setFilterCompany] = useState('all');
@@ -25,6 +26,7 @@ const HistoryPage: React.FC = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(new Set());
+  const [showFilters, setShowFilters] = useState(false);
 
   const mainHistoryTransactions = useMemo(() => {
     // Only show cash transactions with a breakdown on the main history page.
@@ -101,43 +103,112 @@ const HistoryPage: React.FC = () => {
       }
   };
 
+  const handleSync = async () => {
+    try {
+      await manualSync();
+    } catch (error) {
+      console.error('Sync failed:', error);
+    }
+  };
+
+  // Auto-hide sync status after 5 seconds
+  useEffect(() => {
+    if (syncStatus === 'success' || syncStatus === 'error') {
+      const timer = setTimeout(() => {
+        // The sync status will be reset to 'idle' by the context
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [syncStatus]);
+
   return (
     <div className="max-w-7xl mx-auto">
-      <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Transaction History</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Transaction History</h2>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`px-4 py-2 rounded-md transition-colors ${
+              showFilters 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+            }`}
+          >
+            <FilterIcon className="h-4 w-4 mr-2 inline" />
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
+          <button
+            onClick={handleSync}
+            disabled={syncStatus === 'syncing'}
+            className={`px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all ${
+              syncStatus === 'syncing' ? 'animate-pulse' : ''
+            }`}
+          >
+            <ArrowPathIcon className={`h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+            {syncStatus === 'syncing' ? 'Syncing...' : 'Sync'}
+          </button>
+        </div>
+      </div>
       
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 mb-6 sticky top-[65px] z-5">
+      {/* Search Bar - Always Visible */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 mb-6">
         <input 
           type="text" 
           placeholder="Search transactions..." 
           value={searchTerm} 
           onChange={(e) => setSearchTerm(e.target.value)} 
-          className="w-full pl-4 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md mb-4 bg-gray-50 dark:bg-gray-700" 
+          className="w-full pl-4 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700" 
         />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className='relative'>
-            <FilterIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/>
-            <select value={filterCompany} onChange={e => setFilterCompany(e.target.value)} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none">
-              <option value="all">All Companies</option>
-              {companyNames.map(name => <option key={name} value={name}>{name}</option>)}
-            </select>
-          </div>
-          <div className='relative'>
-            <CalendarDaysIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/>
-            <select value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none">
-              <option value="all">All Locations</option>
-              {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-            </select>
-          </div>
-          <div className='relative'>
-            <FilterIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/>
-            <select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none">
-              <option value="all">All Types</option>
-              <option value="credit">Credit</option>
-              <option value="debit">Debit</option>
-            </select>
+      </div>
+
+      {/* Filters - Conditionally Visible */}
+      {showFilters && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className='relative'>
+              <FilterIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/>
+              <select value={filterCompany} onChange={e => setFilterCompany(e.target.value)} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none">
+                <option value="all">All Companies</option>
+                {companyNames.map(name => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </div>
+            <div className='relative'>
+              <CalendarDaysIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/>
+              <select value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none">
+                <option value="all">All Locations</option>
+                {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+              </select>
+            </div>
+            <div className='relative'>
+              <FilterIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/>
+              <select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none">
+                <option value="all">All Types</option>
+                <option value="credit">Credit</option>
+                <option value="debit">Debit</option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Sync Status Indicator */}
+      {syncStatus === 'success' && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-6">
+          <div className="flex items-center gap-2">
+            <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+            <span className="text-green-700 dark:text-green-300 text-sm font-medium">Successfully synced with Google Sheets</span>
+          </div>
+        </div>
+      )}
+      
+      {syncStatus === 'error' && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-6">
+          <div className="flex items-center gap-2">
+            <MinusCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <span className="text-red-700 dark:text-red-300 text-sm font-medium">Sync failed. Please check your connection and try again.</span>
+          </div>
+        </div>
+      )}
 
       {/* Summary Card */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 mb-6">
