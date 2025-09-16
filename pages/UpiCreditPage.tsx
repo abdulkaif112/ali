@@ -29,10 +29,6 @@ const UpiCreditPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || amount <= 0) {
-      setError("Amount must be a positive number.");
-      return;
-    }
     
     setError(null);
     setIsSubmitting(true);

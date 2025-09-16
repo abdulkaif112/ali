@@ -51,7 +51,10 @@ const TransactionItem: React.FC<{
       </div>
       <div className="flex-shrink-0 flex items-center gap-2">
         <div className="text-right">
-            <p className={`text-xl font-bold ${type === 'credit' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            <p className={`text-xl font-bold ${
+              amount < 0 ? 'text-red-600 dark:text-red-400' : 
+              type === 'credit' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+            }`}>
             {type === 'credit' ? '+' : '-'}₹{amount.toLocaleString('en-IN')}
             </p>
             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase">{paymentMethod}</p>

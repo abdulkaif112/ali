@@ -265,6 +265,7 @@ const HistoryPage: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <div className={`text-xl font-bold ${
+                      tx.amount < 0 ? 'text-red-600 dark:text-red-400' : 
                       tx.type === 'credit' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                     }`}>
                       ₹{tx.amount.toLocaleString('en-IN')}

@@ -23,7 +23,9 @@ const VaultPage: React.FC = () => {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 sm:p-8 mb-8">
         <div className="text-center">
             <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Vault Value</h3>
-            <p className="text-5xl font-bold text-blue-600 dark:text-blue-400 mt-2">
+            <p className={`text-5xl font-bold mt-2 ${
+                totalVaultValue < 0 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'
+            }`}>
                 ₹ {totalVaultValue.toLocaleString('en-IN')}
             </p>
         </div>

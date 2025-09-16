@@ -60,10 +60,6 @@ const EditTransactionPage: React.FC = () => {
         e.preventDefault();
         if (!transaction) return;
         
-        if (totalAmount <= 0) {
-            setError("Total amount must be greater than zero.");
-            return;
-        }
         if (!location) {
           setError("Location is a required field.");
           return;
@@ -196,7 +192,7 @@ const EditTransactionPage: React.FC = () => {
                     </div>
 
                     <div>
-                        <button type="submit" disabled={isSubmitting || totalAmount === 0} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
+                        <button type="submit" disabled={isSubmitting} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
                             {isSubmitting ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
