@@ -80,10 +80,13 @@ const CompanyHistoryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  // Initialize with current date by default, but reset to 'all' when showAllDates becomes true
+  const currentDate = new Date();
   const [filterYear, setFilterYear] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
   const [filterDay, setFilterDay] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [showAllDates, setShowAllDates] = useState(false);
 
 
   const decodedCompanyName = companyName ? decodeURIComponent(companyName) : '';
@@ -105,36 +108,57 @@ const CompanyHistoryPage: React.FC = () => {
     const years = new Set<string>();
     const months = new Set<string>();
     const days = new Set<string>();
+    
     companyTransactions.forEach(tx => {
         const d = new Date(tx.date);
         years.add(d.getFullYear().toString());
-        if(filterYear === 'all' || d.getFullYear().toString() === filterYear) {
-            months.add((d.getMonth() + 1).toString().padStart(2, '0'));
-        }
-        if((filterYear === 'all' || d.getFullYear().toString() === filterYear) && (filterMonth === 'all' || (d.getMonth() + 1).toString().padStart(2, '0') === filterMonth)) {
-            days.add(d.getDate().toString().padStart(2, '0'));
+        
+        // When showAllDates is true, show months/days based on selected filters
+        if (showAllDates) {
+            if (filterYear === 'all' || d.getFullYear().toString() === filterYear) {
+                months.add((d.getMonth() + 1).toString().padStart(2, '0'));
+            }
+            if ((filterYear === 'all' || d.getFullYear().toString() === filterYear) && 
+                (filterMonth === 'all' || (d.getMonth() + 1).toString().padStart(2, '0') === filterMonth)) {
+                days.add(d.getDate().toString().padStart(2, '0'));
+            }
         }
     });
+    
     return {
         years: Array.from(years).sort((a,b) => parseInt(b) - parseInt(a)),
         months: Array.from(months).sort((a,b) => parseInt(a) - parseInt(b)),
         days: Array.from(days).sort((a,b) => parseInt(a) - parseInt(b)),
     };
-  }, [companyTransactions, filterYear, filterMonth]);
-  
+  }, [companyTransactions, filterYear, filterMonth, showAllDates]);
+
    useEffect(() => {
     setSelectedIds([]);
-  }, [searchTerm, filterYear, filterMonth, filterDay, filterType]);
+  }, [searchTerm, filterYear, filterMonth, filterDay, filterType, showAllDates]);
 
 
   const filteredTransactions = useMemo(() => {
     return companyTransactions.filter(tx => {
         const txDate = new Date(tx.date);
-        if (filterYear !== 'all' && txDate.getFullYear().toString() !== filterYear) return false;
-        if (filterMonth !== 'all' && (txDate.getMonth() + 1).toString().padStart(2, '0') !== filterMonth) return false;
-        if (filterDay !== 'all' && txDate.getDate().toString().padStart(2, '0') !== filterDay) return false;
+        
+        // Apply date filters based on showAllDates toggle
+        if (!showAllDates) {
+          // Show current date only - filter by current date
+          const currentDate = new Date();
+          if (txDate.getFullYear() !== currentDate.getFullYear()) return false;
+          if (txDate.getMonth() !== currentDate.getMonth()) return false;
+          if (txDate.getDate() !== currentDate.getDate()) return false;
+        } else {
+          // Show all dates or apply manual date filters
+          if (filterYear !== 'all' && txDate.getFullYear().toString() !== filterYear) return false;
+          if (filterMonth !== 'all' && (txDate.getMonth() + 1).toString().padStart(2, '0') !== filterMonth) return false;
+          if (filterDay !== 'all' && txDate.getDate().toString().padStart(2, '0') !== filterDay) return false;
+        }
+        
+        // Apply transaction type filter
         if (filterType !== 'all' && tx.type !== filterType) return false;
         
+        // Apply search filter
         const searchLower = searchTerm.toLowerCase();
         if (searchTerm && !(
             tx.person?.toLowerCase().includes(searchLower) ||
@@ -144,7 +168,7 @@ const CompanyHistoryPage: React.FC = () => {
 
         return true;
     });
-  }, [companyTransactions, searchTerm, filterYear, filterMonth, filterDay, filterType]);
+  }, [companyTransactions, searchTerm, filterYear, filterMonth, filterDay, filterType, showAllDates]);
 
   const filteredSummary = useMemo(() => {
     return filteredTransactions.reduce((acc, tx) => {
@@ -173,7 +197,27 @@ const CompanyHistoryPage: React.FC = () => {
     }
   };
   
-  const handlePrint = () => navigate(`/report/${encodeURIComponent(decodedCompanyName)}`);
+  const handlePrint = () => {
+    // Navigate to report page with all current filters
+    const params = new URLSearchParams();
+    
+    if (locationFilter) params.append('location', locationFilter);
+    if (filterType !== 'all') params.append('type', filterType);
+    
+    // Pass search term if it exists
+    if (searchTerm.trim()) params.append('search', searchTerm.trim());
+    
+    // Pass the current date filter state
+    if (showAllDates) {
+      params.append('showAllDates', 'true');
+      if (filterYear !== 'all') params.append('year', filterYear);
+      if (filterMonth !== 'all') params.append('month', filterMonth);
+      if (filterDay !== 'all') params.append('day', filterDay);
+    }
+    
+    const reportUrl = `/report/${encodeURIComponent(decodedCompanyName)}${params.toString() ? '?' + params.toString() : ''}`;
+    navigate(reportUrl);
+  };
   const handleUpi = () => navigate('/upi-credit', { state: { companyName: decodedCompanyName, companyLocation } });
   const handleNewDebit = () => navigate('/debit-entry', { state: { companyName: decodedCompanyName, companyLocation } });
   
@@ -253,12 +297,41 @@ const CompanyHistoryPage: React.FC = () => {
       {/* Filter Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-6 sticky top-[65px] z-5 no-print">
         <input type="text" placeholder="Search this company's transactions..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-4 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md mb-4 bg-gray-50 dark:bg-gray-700" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className='relative'><CalendarDaysIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/><select value={filterYear} onChange={e => {setFilterYear(e.target.value); setFilterMonth('all'); setFilterDay('all');}} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none"><option value="all">All Years</option>{years.map(y=><option key={y} value={y}>{y}</option>)}</select></div>
-            <div className='relative'><CalendarDaysIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/><select value={filterMonth} onChange={e => {setFilterMonth(e.target.value); setFilterDay('all');}} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none"><option value="all">All Months</option>{months.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
-            <div className='relative'><CalendarDaysIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/><select value={filterDay} onChange={e => setFilterDay(e.target.value)} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none"><option value="all">All Days</option>{days.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
-            <div className='relative'><FilterIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/><select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none"><option value="all">All Types</option><option value="credit">Credit</option><option value="debit">Debit</option></select></div>
+        
+        {/* Date Filter Toggle */}
+        <div className="mb-4 flex items-center gap-4">
+          <button
+            onClick={() => setShowAllDates(!showAllDates)}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              showAllDates 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+            }`}
+          >
+            {showAllDates ? 'Show Today Only' : 'Show All Dates'}
+          </button>
+          {!showAllDates && (
+            <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+              Showing: {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+            </span>
+          )}
         </div>
+        
+        {showAllDates && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className='relative'><CalendarDaysIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/><select value={filterYear} onChange={e => {setFilterYear(e.target.value); setFilterMonth('all'); setFilterDay('all');}} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none"><option value="all">All Years</option>{years.map(y=><option key={y} value={y}>{y}</option>)}</select></div>
+              <div className='relative'><CalendarDaysIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/><select value={filterMonth} onChange={e => {setFilterMonth(e.target.value); setFilterDay('all');}} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none"><option value="all">All Months</option>{months.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
+              <div className='relative'><CalendarDaysIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/><select value={filterDay} onChange={e => setFilterDay(e.target.value)} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none"><option value="all">All Days</option>{days.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+              <div className='relative'><FilterIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/><select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none"><option value="all">All Types</option><option value="credit">Credit</option><option value="debit">Debit</option></select></div>
+          </div>
+        )}
+        
+        {!showAllDates && (
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
+              <div className='relative'><FilterIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400'/><select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full p-2 pl-10 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 appearance-none"><option value="all">All Types</option><option value="credit">Credit</option><option value="debit">Debit</option></select></div>
+          </div>
+        )}
+        
         <div className="mt-4 flex items-center">
             <input type="checkbox" id="selectAll" onChange={handleSelectAll} checked={filteredTransactions.length > 0 && selectedIds.length === filteredTransactions.length} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
             <label htmlFor="selectAll" className="ml-2 text-sm text-gray-600 dark:text-gray-300">Select/Deselect All ({selectedIds.length} of {filteredTransactions.length} selected)</label>

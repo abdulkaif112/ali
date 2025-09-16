@@ -7,6 +7,25 @@ const ReportPage: React.FC = () => {
     const { companyName } = useParams<{ companyName: string }>();
     const { transactions } = useAppContext();
     const [generationDate] = useState(new Date());
+    
+    // Get filter parameters from URL - same as CompanyHistoryPage
+    const [searchParams] = useState(() => new URLSearchParams(window.location.search));
+    const locationFilter = searchParams.get('location') || null;
+    const filterType = searchParams.get('type') || 'all';
+    const filterName = searchParams.get('name') || 'all';
+    const searchTerm = searchParams.get('search') || '';
+    
+    // Check if we should show current date only (default behavior)
+    const showAllDates = searchParams.get('showAllDates') === 'true';
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear().toString();
+    const currentMonth = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+    const currentDay = currentDate.getDate().toString().padStart(2, '0');
+    
+    // Get manual date filters from URL if showing all dates
+    const filterYear = showAllDates ? (searchParams.get('year') || 'all') : currentYear;
+    const filterMonth = showAllDates ? (searchParams.get('month') || 'all') : currentMonth;
+    const filterDay = showAllDates ? (searchParams.get('day') || 'all') : currentDay;
 
     const decodedCompanyName = companyName ? decodeURIComponent(companyName) : '';
 
@@ -17,10 +36,58 @@ const ReportPage: React.FC = () => {
     }, []);
     
     const companyTransactions = useMemo(() => {
-        return transactions
-            .filter(tx => (tx.company || 'NA') === decodedCompanyName)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [transactions, decodedCompanyName]);
+        let filtered = transactions.filter(tx => (tx.company || 'NA') === decodedCompanyName);
+        
+        // Apply location filter if specified
+        if (locationFilter && locationFilter !== 'all') {
+            filtered = filtered.filter(tx => tx.location === locationFilter);
+        }
+        
+        // Apply date filters - default to current date unless showAllDates is true
+        if (!showAllDates) {
+            // Show current date only - same logic as CompanyHistoryPage
+            const today = new Date();
+            filtered = filtered.filter(tx => {
+                const txDate = new Date(tx.date);
+                return txDate.getFullYear() === today.getFullYear() &&
+                       txDate.getMonth() === today.getMonth() &&
+                       txDate.getDate() === today.getDate();
+            });
+        } else {
+            // Apply manual date filters only if showAllDates is true
+            if (filterYear !== 'all') {
+                filtered = filtered.filter(tx => new Date(tx.date).getFullYear().toString() === filterYear);
+            }
+            if (filterMonth !== 'all') {
+                filtered = filtered.filter(tx => (new Date(tx.date).getMonth() + 1).toString().padStart(2, '0') === filterMonth);
+            }
+            if (filterDay !== 'all') {
+                filtered = filtered.filter(tx => new Date(tx.date).getDate().toString().padStart(2, '0') === filterDay);
+            }
+        }
+        
+        // Apply transaction type filter
+        if (filterType !== 'all') {
+            filtered = filtered.filter(tx => tx.type === filterType);
+        }
+        
+        // Apply person name filter (only if provided in URL)
+        if (filterName && filterName !== 'all') {
+            filtered = filtered.filter(tx => (tx.person || 'N/A') === filterName);
+        }
+        
+        // Apply search filter - same logic as CompanyHistoryPage
+        if (searchTerm.trim()) {
+            const searchLower = searchTerm.toLowerCase();
+            filtered = filtered.filter(tx => 
+                tx.person?.toLowerCase().includes(searchLower) ||
+                tx.amount.toString().includes(searchLower) ||
+                tx.paymentMethod.toLowerCase().includes(searchLower)
+            );
+        }
+        
+        return filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [transactions, decodedCompanyName, locationFilter, filterType, filterName, showAllDates, filterYear, filterMonth, filterDay, searchTerm]);
 
     const reportData = useMemo(() => {
         if (!companyTransactions.length) return null;
@@ -57,10 +124,28 @@ const ReportPage: React.FC = () => {
         hour: '2-digit', minute: '2-digit', hour12: true,
     });
 
+    // Create a filter description for the report header
+    const getFilterDescription = () => {
+        const parts = [];
+        if (!showAllDates) {
+            parts.push(`Date: ${currentDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`);
+        } else {
+            if (filterYear !== 'all') parts.push(`Year: ${filterYear}`);
+            if (filterMonth !== 'all') parts.push(`Month: ${filterMonth}`);
+            if (filterDay !== 'all') parts.push(`Day: ${filterDay}`);
+        }
+        if (locationFilter && locationFilter !== 'all') parts.push(`Location: ${locationFilter}`);
+        if (filterType !== 'all') parts.push(`Type: ${filterType.charAt(0).toUpperCase() + filterType.slice(1)}`);
+        if (filterName !== 'all') parts.push(`Person: ${filterName}`);
+        if (searchTerm.trim()) parts.push(`Search: "${searchTerm.trim()}"`);
+        return parts.length > 0 ? parts.join(' | ') : 'All transactions';
+    };
+
     if (!reportData) {
         return (
             <div className="text-center p-8">
-                <p>No transactions found for {decodedCompanyName} to generate a report.</p>
+                <p>No transactions found for {decodedCompanyName} matching the applied filters.</p>
+                <p className="text-sm text-gray-600 mt-2">Filters applied: {getFilterDescription()}</p>
                 <Link to={`/company/${companyName}`} className="text-blue-600 hover:underline mt-4 inline-block">Go Back</Link>
             </div>
         );
@@ -73,12 +158,12 @@ const ReportPage: React.FC = () => {
         maximumFractionDigits: 0,
     });
 
-
     return (
         <div className="bg-white p-2 sm:p-4 md:p-6 lg:p-8 print-container min-w-0">
              <div className="text-center mb-2 sm:mb-4">
                  <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-black uppercase">Report for {decodedCompanyName}</h1>
                  <p className="text-xs sm:text-sm text-gray-600">Generated on: {formattedDate(generationDate)}</p>
+                 <p className="text-xs sm:text-sm text-blue-600 font-medium">Filters: {getFilterDescription()}</p>
              </div>
 
             <div className="overflow-x-auto">
