@@ -58,10 +58,7 @@ const TransactionPage: React.FC = () => {
       setError("Location is a required field.");
       return;
     }
-    if (!recordedBy.trim()) {
-      setError("'Recorded By' is a required field.");
-      return;
-    }
+
 
     setError(null);
     setIsSubmitting(true);
@@ -142,24 +139,7 @@ const TransactionPage: React.FC = () => {
           </div>
         </div>
 
-        <div>
-          <label htmlFor="recordedBy" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Recorded By</label>
-          <div className="mt-1 relative rounded-md shadow-sm">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <UserIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input 
-              type="text" 
-              name="recordedBy" 
-              id="recordedBy" 
-              value={recordedBy} 
-              readOnly 
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 cursor-not-allowed sm:text-sm" 
-              title="Automatically filled with logged-in user"
-            />
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Automatically filled with your logged-in account</p>
-        </div>
+
 
         <hr className="border-gray-200 dark:border-gray-700" />
 

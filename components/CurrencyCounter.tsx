@@ -10,8 +10,7 @@ interface CurrencyCounterProps {
 const CurrencyCounter: React.FC<CurrencyCounterProps> = ({ value, onChange }) => {
 
   const handleCountChange = (denomination: number, count: number) => {
-    const newCount = Math.max(0, count);
-    onChange({ ...value, [denomination]: newCount });
+    onChange({ ...value, [denomination]: count });
   };
 
   return (
@@ -27,7 +26,6 @@ const CurrencyCounter: React.FC<CurrencyCounterProps> = ({ value, onChange }) =>
             <input
               id={`denom-${denom}`}
               type="number"
-              min="0"
               value={value[denom] || ''}
               onChange={(e) => handleCountChange(denom, parseInt(e.target.value, 10) || 0)}
               className="w-full max-w-xs px-3 py-1.5 text-center bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
